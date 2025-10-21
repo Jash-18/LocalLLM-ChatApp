@@ -1,0 +1,4 @@
+{
+    "server_url": "http://localhost:1234",
+    "model_name": "local-model"
+}
