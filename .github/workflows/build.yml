@@ -94,8 +94,8 @@ jobs:
         ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
         ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
         ANDROIDSDK: ${{ env.ANDROID_SDK_ROOT }}
-        P4A_BOOTSTRAP=gradle
-        P4A_ignore_setup_py=1
+        P4A_BOOTSTRAP: gradle
+        P4A_ignore_setup_py: 1
       run: |
         buildozer android debug
 
