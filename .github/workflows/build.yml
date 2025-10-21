@@ -46,10 +46,11 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Install Android SDK with sdkmanager and accept licenses
+    - name: Install Android SDK minimal (no auto updates)
+      env:
+        ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
       run: |
         set -euxo pipefail
-        export ANDROID_SDK_ROOT="$HOME/android-sdk"
         mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
         cd "$ANDROID_SDK_ROOT"
         curl -sSL -o cmdtools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
@@ -58,24 +59,29 @@ jobs:
         echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
         echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
         yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses || true
-        "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --update || true
-        # Install only specific, stable packages
+        # DO NOT run sdkmanager --update (prevents pulling latest 36.x)
         "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
           "platform-tools" \
-          "platforms;android-34" \
-          "build-tools;34.0.0"
-        # Verify installation
+          "platforms;android-31" \
+          "build-tools;31.0.0"
         ls -la "$ANDROID_SDK_ROOT/build-tools" || true
         ls -la "$ANDROID_SDK_ROOT/platforms" || true
         echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+        echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+        echo "ANDROIDSDK=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
 
-    - name: Pin Buildozer to local SDK and API 34
+    - name: Pin Buildozer/p4a to API 31 toolchain
       run: |
-        sed -i 's/^android\.api = .*/android.api = 34/' buildozer.spec || true
-        sed -i 's/^android\.ndk = .*/android.ndk = 25b/' buildozer.spec || true
+        sed -i 's/^android\.api = .*/android.api = 31/' buildozer.spec || true
         sed -i 's/^android\.minapi = .*/android.minapi = 21/' buildozer.spec || true
-        echo "sdk.dir=$HOME/android-sdk" > local.properties
-        echo "ndk.dir=$HOME/android-sdk/ndk/25.0.8775105" >> local.properties || true
+        sed -i 's/^android\.ndk = .*/android.ndk = 25b/' buildozer.spec || true
+        # Create local.properties in both project and p4a gradle dirs
+        echo "sdk.dir=${{ env.ANDROID_SDK_ROOT }}" > local.properties
+        mkdir -p .buildozer/android/platform/android
+        echo "sdk.dir=${{ env.ANDROID_SDK_ROOT }}" > .buildozer/android/platform/android/local.properties
+        # Environment overrides for Gradle to stop "latest" queries
+        echo "org.gradle.jvmargs=-Xmx3g" >> gradle.properties
+        echo "android.builder.sdkDownload=false" >> gradle.properties
 
     - name: Install Python dependencies
       run: |
@@ -83,27 +89,13 @@ jobs:
         pip install buildozer cython==0.29.33
         pip install -r requirements.txt
 
-    - name: Force p4a/Buildozer env to use pinned SDK only
+    - name: Build APK (API 31 pinned)
       env:
         ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
-      run: |
-        export ANDROID_SDK_ROOT="$HOME/android-sdk"
-        export ANDROIDSDK="$HOME/android-sdk"
-        export ANDROID_HOME="$HOME/android-sdk"
-        echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-        echo "ANDROIDSDK=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-        echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-        # Pre-create build-tools dir to satisfy AIDL check path
-        mkdir -p "$ANDROID_SDK_ROOT/build-tools/34.0.0"
-        # Create dummy local.properties in app dir Buildozer uses
-        mkdir -p .buildozer/android/platform/android
-        echo "sdk.dir=$HOME/android-sdk" > .buildozer/android/platform/android/local.properties
-
-    - name: Build APK
-      env:
-        ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
-        ANDROIDSDK: ${{ env.ANDROID_SDK_ROOT }}
         ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+        ANDROIDSDK: ${{ env.ANDROID_SDK_ROOT }}
+        P4A_BOOTSTRAP=gradle
+        P4A_ignore_setup_py=1
       run: |
         buildozer android debug
 
