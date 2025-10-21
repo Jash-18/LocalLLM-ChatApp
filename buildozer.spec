@@ -29,8 +29,8 @@ fullscreen = 0
 # (list) Permissions
 android.permissions = INTERNET,ACCESS_NETWORK_STATE,ACCESS_WIFI_STATE
 
-# (int) Target Android API, should be as high as possible.
-android.api = 33
+# (int) Target Android API
+android.api = 31
 
 # (int) Minimum API your APK + Aapt/Aapt2 will support.
 android.minapi = 21
@@ -38,12 +38,12 @@ android.minapi = 21
 # (str) Android NDK version to use
 android.ndk = 25b
 
-# (int) Android SDK version to use
-android.sdk = 33
+# (str) Android SDK version to use (deprecated; removed to avoid p4a fetching latest)
+# android.sdk = 31
 
 # (str) Android arch to build for
 android.archs = arm64-v8a, armeabi-v7a
 
 [buildozer]
-# (int) Log level (0 = error only, 1 = info, 2 = debug (with command output))
+# (int) Log level (0 = error only, 1 = info, 2 = debug)
 log_level = 2
